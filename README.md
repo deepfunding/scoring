@@ -1,4 +1,4 @@
-# DeepFunding: Optimal Distribution Weighting
+# Scoring Mechanism for Deep Funding
 
 ## Introduction
 
