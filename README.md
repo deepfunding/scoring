@@ -2,7 +2,7 @@
 
 ## Introduction
 
-This project tackles the [deep funding problem](https://github.com/opensource-observer/insights/blob/main/community/dependency_graph_funding/readme.md): how to fairly allocate resources (funding, recognition, or both) within a large, interdependent open-source ecosystem. By blending scoring mechanisms that incorporate human and AI feedback with a dependency graph of critical repositories, we arrive at an optimized way to distribute funding.
+This project tackles the [deep funding problem](https://github.com/opensource-observer/insights/blob/main/community/dependency_graph_funding/readme.md): how to fairly allocate resources (funding, recognition, or both) within a large, interdependent open-source ecosystem. By blending scoring mechanisms that incorporate human and AI feedback, we arrive at an optimized way to distribute funding.
 
 The solution can be used to determine fair rewards for contributors by:
 
