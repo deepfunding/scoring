@@ -1,1 +1,1 @@
-# scoring
+# Scoring mechanism for deep funding
