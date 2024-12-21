@@ -2,9 +2,9 @@
 
 ## Introduction
 
-This code is designed to help fairly distribute rewards among contributors based on multiple input evaluations and user preferences. By combining different assessment methods through optimization, we ensure that rewards reflect the collective input (given by AI and humans) and defined criteria.
+This project tackles the [deep funding problem](https://github.com/opensource-observer/insights/blob/main/community/dependency_graph_funding/readme.md): how to fairly allocate resources (funding, recognition, or both) within a large, interdependent open-source ecosystem. By blending scoring mechanisms that incorporate human and AI feedback with a dependency graph of critical repositories, we arrive at an optimized way to distribute funding.
 
-It could be used to determine fair rewards for contributors by:
+The solution can be used to determine fair rewards for contributors by:
 
 1. **Defining Distributions:**
    - **AI Assessment:** Evaluations from AI on each contributor's impact.
