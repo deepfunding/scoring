@@ -39,12 +39,19 @@ characters = [
 # to the case where you instead provide [v/t for v in contributions]
 
 distributions = [
-    # Asked GPT how much credit each deserves
+    # GPT's answers (what share of credit each deserves)
     [
         0.25, 0.20, 0.15, 0.10, 0.03,
         0.03, 0.03, 0.03, 0.02, 0.02,
         0.03, 0.02, 0.02, 0.03, 0.01,
         0.02, 0.01, 0.01, 0.03, 0.01
+    ],
+    # Claude's answers
+    [
+        20, 18, 12, 8, 3,
+        3, 2, 2, 2, 2,
+        4, 2, 2, 3, 5,
+        5, 1, 2, 3, 1
     ],
     # My own opinion from thinking about it for 1 minute
     [
