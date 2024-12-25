@@ -33,6 +33,9 @@ characters = [
 ]
 
 # Different submitted distributions for who deserves what share of credit.
+# In a live deep funding implementation, anyone would be able to submit a
+# distribution (realistically using AI to generate it) and it would go into
+# this list.
 #
 # Note that it actually does not matter whether or not a list sums to 1;
 # if the contributions sum to t != 1, then the result will be equivalent
@@ -42,7 +45,7 @@ characters = [
 # distribution.
 
 distributions = {
-    # GPT's answers (what share of credit each deserves)
+    # GPT's answers
     'gpt': [
         0.25, 0.20, 0.15, 0.10, 0.03,
         0.03, 0.03, 0.03, 0.02, 0.02,
