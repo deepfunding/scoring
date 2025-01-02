@@ -18,6 +18,18 @@ from scipy.optimize import minimize
 def cost_function(logits, samples):
     return sum((logits[b] - logits[a] - c) ** 2 for a, b, c in samples)
 
+# Alternate version of cost function
+# Should be much faster when number of logits or samples is large. 
+def alternate_cost_function(logits,samples):
+    # A potential modification, which pays the cost of three comprehensions
+    # in exchange for being able to use numpy operations 
+    logits_a = np.array([logits[a] for a, _, _ in samples])
+    logits_b = np.array([logits[b] for _,b,_ in samples])
+    c_elements = np.array([c for _,_,c in samples])
+    modified_cost = np.square(np.sum(logits_b - logits_a - c_elements))
+    return modified_cost    
+
+
 # Optimization to find best vector of weights on the input logits. For example,
 # if the input logits contains three lists and the output is [0.5, 0.5, 0], then
 # this means that the optimum is to take a 50/50 average of the first two lists.
