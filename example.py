@@ -58,6 +58,13 @@ distributions = {
         3, 2, 2, 2, 2,
         4, 2, 2, 3, 5,
         5, 1, 2, 3, 1
+    ], 
+    # Deepseek's answers
+    'deepseek': [
+        40, 30, 10, 5, 2,
+        2, 1, 1, 0.5, 0.5,
+        2, 1, 1, 1, 0.5,
+        0.3, 0.2, 0.5, 0.1, 0.05
     ],
     # My own opinion from thinking about it for 1 minute
     'human': [
