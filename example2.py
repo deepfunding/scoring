@@ -3,7 +3,43 @@ from scoring import find_optimal_weights, cost_function
 import networkx as nx
 import matplotlib.pyplot as plt
 
-items = {
+INTRO_STRING = """
+Welcome to the multi-layer deep funding demo! In this example, we are
+going to assign weights to various philosophical contributions that are
+upstream of Ethereum's philosophy. This includes _direct_ dependencies, such as
+as Bitcoin's monetary philosophy and the cypherpunk movement, and also
+_dependencies of each dependency_: for example, Austrian economics as
+a dependency of Bitcoin's monetary philosophy.
+
+Note that in principle, a dependency graph of this type can go very deep:
+Austrian economics itself depends on classical liberalism, which itself has
+some degree of dependence on Islamic economic theories that were developed
+roughly a millennium ago. Here, we are simplifying to two levels.
+
+We represent the two-level graph as a _three-level_ graph, to incorporate
+another subtle but important dimension: to what extent was each of Ethereum's
+philosophical progenitors an original contribution, versus "just" a repackaging
+of things that came before it? In other natural deep funding use cases, such as
+math academic and software, this dimension is even more important.
+
+This simulator puts you into the role of a juror. You will be given several
+"comparison" questions, which ask you to make _local_ judgements: for a given
+philosophy, and two of its "ancestors", judge which of its ancestors provided
+more value, and how much more. There will also be questions asking you to
+judge the degree of originality of a philosophy.
+
+Several AI models have been asked to give a score for every edge in the
+dependency graph. After you, the juror, give a few inputs on randomly-sampled
+questions, the linear combination of AI models that are a best-fit to your
+answers will be used to generate "final" weights for the entire graph.
+"""
+
+# The thing whose (recursive) dependencies we are trying to assign credit for
+ROOT_NODE = "Ethereum"
+
+# A list of dependencies of ROOT_NODE, and for each dependency a list of
+# dependencies _of that dependency_
+ITEMS = {
     "Bitcoin's monetary philosophy": [
         "Austrian Economics / sound money advocacy (Mises, Hayek, Rothbard)",
         "Free currency competition / denationalization of money (eg. Hayek)",
@@ -55,7 +91,11 @@ items = {
     ]
 }
 
-graph = {
+# Repackaging the above into a "standardized" graph format. This graph format
+# is three-layered, where the middle layer represents the question of to what
+# extent each top-level dependency is itself a contribution in its own right,
+# versus a repackaging of its own dependencies.
+GRAPH = {
     item: {
         "self": None,
         "dependencies": {
@@ -63,49 +103,34 @@ graph = {
             for value in values
         }
     }
-    for item, values in items.items()
+    for item, values in ITEMS.items()
 }
 
+# Sample code to generate some queries that you can ask AI models to get
+# weights for the whole graph. Note that there is probably an entire art
+# to prompting (and perhaps extending with RAG or interner search or
+# even fine-tuning) an AI well to give good answers to these questions.
 def generate_ai_queries(parent, graph):
     if graph is None:
         return []
     elif set(list(graph.keys())) == {'self', 'dependencies'}:
         children = list(graph['dependencies'].keys())
         o = [
-            f"Estimate to what extent {parent} can be described as a mere combination of pre-existing ideas such as {children}, and to what extent it's a novel thing that is more than the sum of its parts. Provide your answer as a list [pct_original, pct_derivative], where the two numbers add up to 100, with no surrounding explanation text"
+            f"Estimate to what extent {parent} can be described as a mere combination of pre-existing ideas such as {children}, and to what extent it's a novel thing that is more than the sum of its parts. Provide your answer as a python list [pct_original, pct_derivative], where the two numbers add up to 100, with no surrounding explanation text"
         ]
         o.extend(generate_ai_queries(parent, graph['dependencies']))
         return o
     else:
         children = list(graph.keys())
         o = [
-            f"Estimate the relative influence that each of the following philosophies {children} had on {parent}. Provide your answer ONLY as a list of numbers that add up to 100, with no surrounding explanation text"
+            f"Estimate the relative influence that each of the following philosophies {children} had on {parent}. Provide your answer ONLY as a python list of numbers (eg. [10, 20, 30, 40]) that add up to 100, with no surrounding explanation text"
         ]
         for parent, child_node in graph.items():
             o.extend(generate_ai_queries(parent, child_node))
         return o
 
+# The scores given by each AI model, arranged in depth-first-search order
 distributions = {
-    'gpt_o1': [
-        15,
-        40, 60,
-        40, 25, 20, 10, 3, 2,
-        20,
-        40, 60,
-        15, 20, 15, 10, 15, 20, 5,
-        20,
-        60, 40,
-        15, 25, 20, 20, 10, 10,
-        15,
-        40, 60,
-        15, 20, 10, 5, 15, 10, 20, 5,
-        15,
-        70, 30,
-        20, 30, 20, 20, 10,
-        15,
-        40, 60,
-        30, 20, 15, 15, 20
-    ],
     'gpt_o3': [
         # Bitcoin's monetary philosophy (20% overall)
         20,                # Top‐level credit share
@@ -131,6 +156,26 @@ distributions = {
         10,                # Top‐level credit share
         40, 60,           # 40% original, 60% derivative
         25, 20, 25, 15, 15 # Children
+    ],
+    'gpt_o1': [
+        15,
+        40, 60,
+        40, 25, 20, 10, 3, 2,
+        20,
+        40, 60,
+        15, 20, 15, 10, 15, 20, 5,
+        20,
+        60, 40,
+        15, 25, 20, 20, 10, 10,
+        15,
+        40, 60,
+        15, 20, 10, 5, 15, 10, 20, 5,
+        15,
+        70, 30,
+        20, 30, 20, 20, 10,
+        15,
+        40, 60,
+        30, 20, 15, 15, 20
     ],
     'deepseek': [
         25,
@@ -174,8 +219,11 @@ distributions = {
     ]
 }
 
+# The actual scoring function operates over logits, so we convert all
+# scores into logits.
 logits = [[math.log(p) for p in dist] for dist in distributions.values()]
 
+# Function to ask the user to compare two children of a parent
 def ask_comparison(parent, name_a, name_b):
     # Ask the user which deserves more credit
     print(" ")
@@ -193,6 +241,7 @@ def ask_comparison(parent, name_a, name_b):
     # Calculate log multiplier (negative if first name is chosen)
     return math.log(multiplier) if choice == '2' else -math.log(multiplier)
 
+# Function to ask the user to give the level of originality of a node
 def ask_about_originality(parent, children):
     children_txt = '* ' + '\n* '.join(children)
     print(" ")
@@ -200,40 +249,56 @@ def ask_about_originality(parent, children):
     value = float(input("Eg. answer 0.75 for developments that are very significant in their own right, 0.25 for mostly-recombinations, and 0.5 if somewhere in between: "))
     return math.log(value / (1 - value))
 
-def compute_start_positions(graph):
-    start_positions = [len(graph.keys())]
-    for child in graph.values():
-        children_count = len(child['dependencies'].keys())
-        start_positions.append(start_positions[-1] + 2 + children_count)
-    return start_positions
+# Get the total number of nodes in a given graph or subtree
+def get_total_node_count(node):
+    if node is None:
+        return 1
+    else:
+        return 1 + sum([get_total_node_count(v) for v in node.values()])
 
+# In a vector, given a particular position of the current node, get
+# the positions of its children, based on depth-first order
+def get_children_positions(my_position, node):
+    o = [my_position + 1]
+    for child in node.values():
+        o.append(o[-1] + get_total_node_count(child))
+    return o[:-1]
 
+# Ask a user enough questions to get a list of sample values, which
+# models can then be tested against.
 def gather_user_comparisons(parent, graph):
     top_level_nodes = list(graph.keys())
     top_level_width = len(top_level_nodes)
     samples = []
-    start_positions = compute_start_positions(graph)
+    start_positions = get_children_positions(-1, graph)
     # Top-level comparisons
     for _ in range(2):
-        # Randomly select two different names
+        # Randomly select two different top-level dependencies
         a, b = random.sample(range(top_level_width), 2)
         name_a, name_b = top_level_nodes[a], top_level_nodes[b]
         # Store result as (index of first, index of second, log multiplier)
-        samples.append((a, b, ask_comparison(parent, name_a, name_b)))
+        samples.append((
+            start_positions[a],
+            start_positions[b],
+            ask_comparison(parent, name_a, name_b)
+        ))
     # Originality rating
     for _ in range(2):
-        # Randomly select two different names
+        # Randomly select a single top-level dependency
         a = random.randrange(top_level_width)
-        a_self_index = start_positions[a]
-        a_dependencies_index = start_positions[a] + 1
+        a_self_index = start_positions[a] + 1
+        a_dependencies_index = start_positions[a] + 2
         name_a = top_level_nodes[a]
         # Store result as (index of first, index of second, log multiplier)
         samples.append((
             a_self_index,
             a_dependencies_index,
-            ask_about_originality(name_a, list(graph[name_a]['dependencies'].keys()))
+            ask_about_originality(
+                name_a,
+                list(graph[name_a]['dependencies'].keys())
+            )
         ))
-    # Child-level comparisons
+    # Comparing two children of a given top-level dependency
     for _ in range(4):
         # Randomly select a child node
         a = random.randrange(top_level_width)
@@ -242,10 +307,9 @@ def gather_user_comparisons(parent, graph):
         lower_level_nodes = list(graph[name_a]["dependencies"].keys())
         lower_level_width = len(lower_level_nodes)
         b, c = random.sample(range(lower_level_width), 2)
-        b_index, c_index = start_positions[a] + 2 + b, start_positions[a] + 2 + c
+        b_index, c_index = start_positions[a] + 3 + b, start_positions[a] + 3 + c
         name_b, name_c = lower_level_nodes[b], lower_level_nodes[c]
         samples.append((b_index, c_index, ask_comparison(name_a, name_b, name_c)))
-
     return samples
 
 def plot_tree(tree, weights, root):
@@ -388,17 +452,8 @@ def plot_tree(tree, weights, root):
     nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels)
     plt.show()
 
-def get_total_node_count(node):
-    if node is None:
-        return 1
-    else:
-        return 1 + sum([get_total_node_count(v) for v in node.values()])
-
-def get_children_positions(my_position, node):
-    o = [my_position + 1]
-    for child in node.values():
-        o.append(o[-1] + get_total_node_count(child))
-    return o[:-1]
+# Take a vector of weights, and adjust it so that
+# the weights of all children of a given parent sum to 1
 
 def normalize_vector(node, vector, pos=-1):
     child_positions = get_children_positions(pos, node)
@@ -410,7 +465,14 @@ def normalize_vector(node, vector, pos=-1):
             normalize_vector(child_node, vector, pos)
 
 if __name__ == '__main__':
-    user_samples = gather_user_comparisons('Ethereum', graph)
+    print(INTRO_STRING)
+
+    user_samples = gather_user_comparisons(ROOT_NODE, GRAPH)
+
+    print("\nObtained samples: ")
+    for a, b, diff in user_samples:
+        print(f"({a}, {b}, {diff:.3f})")
+    print("")
 
     optimal_weights = find_optimal_weights(logits, user_samples)
     final_logits = [
@@ -418,7 +480,7 @@ if __name__ == '__main__':
         for i in range(len(logits[0]))
     ]
     final_edges = [math.exp(v) for v in final_logits]
-    normalize_vector(graph, final_edges)
+    normalize_vector(GRAPH, final_edges)
     for i, k in enumerate(distributions.keys()):
         print(
             "Cost of pure {} distribution: {:.4f}"
@@ -432,5 +494,5 @@ if __name__ == '__main__':
     for key, weight in zip(distributions.keys(), optimal_weights):
         padding = ' ' * (max(len(x) for x in distributions.keys()) - len(key))
         print(f"{key}:{padding} {weight:.3f}")
-    print("\nLowest-cost distribution:\n")
-    plot_tree(graph, final_edges, "Ethereum")
+    print("\nGraphing lowest-cost distribution...")
+    plot_tree(GRAPH, final_edges, ROOT_NODE)
